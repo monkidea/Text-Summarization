@@ -1,0 +1,12 @@
+# Binary related
+Main
+Para
+
+# IDE
+.vscode/*
+
+# CMake
+Makefile
+CMakeFiles/*
+CMakeCache.txt
+cmake_install.cmake
