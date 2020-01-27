@@ -38,7 +38,7 @@ class Exhaustive:
             wf = freq(wx)/max(freq(wi))
         """
         if len(self.wfreq) == 0:
-            self.PopulateFreq()
+            self.__PopulateFreq()
 
         word = kwargs["term"]
         if word.lower() in self.wstop or word.isdigit() or len(word) == 0:
