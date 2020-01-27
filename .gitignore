@@ -6,7 +6,11 @@ Para
 .vscode/*
 
 # CMake
-Makefile
-CMakeFiles/*
-CMakeCache.txt
-cmake_install.cmake
+Cpp/Makefile
+Cpp/CMakeFiles/*
+Cpp/CMakeCache.txt
+Cpp/cmake_install.cmake
+
+# Python & PDFs
+Python/Materials/*
+Python/__pycache__/*
