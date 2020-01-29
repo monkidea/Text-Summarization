@@ -165,6 +165,9 @@ class TextRank:
             for col in row:
                 if col is not None:
                     cssum += col
+
+            if cssum <= 0:
+                raise ValueError("Error: cssum <= 0")
             cssum /= 4
             hmap.update({rowidx: cssum})
             rowidx += 1
