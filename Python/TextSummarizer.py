@@ -65,6 +65,7 @@ class Exhaustive:
         if len(self.wfreq) == 0:
             self.__PopulateFreq()
 
+        idx = 0
         arr = {}
         for lines in self.tokens:
             swt = 0
@@ -72,8 +73,13 @@ class Exhaustive:
             for word in lines:
                 line += "{0} ".format(word)
                 swt += self.__GetWeightedFreq(term=word)
-            arr[line] = swt
-        arr = sorted(arr.items(), key=lambda x: x[1], reverse=True)
+            arr[line] = (swt, idx)
+            idx += 1
+
+        arr = sorted(arr.items(), key=lambda x: x[1][0], reverse=True)
+        arr = arr[:k]
+        arr = sorted(arr, key=lambda x: x[1][1])
+
         return arr[:k]
 
     def __PopulateFreq(self):
@@ -166,8 +172,6 @@ class TextRank:
                 if col is not None:
                     cssum += col
 
-            if cssum <= 0:
-                raise ValueError("Error: cssum <= 0")
             cssum /= 4
             hmap.update({rowidx: cssum})
             rowidx += 1
