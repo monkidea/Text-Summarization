@@ -17,12 +17,12 @@ private:
   } container_t;
 
   FILE *_fd;
-  string _file;
+  string _file, _splitDelim, _fdData;
 
-  int _tWeight;
-  int _maxWeight;
+  unsigned int _summarySize;
+  unsigned int _maxFreq;
   unordered_set<string> _wStopWords;
-  unordered_map<string, int> _wfreq;
+  unordered_map<string, unsigned int> _wfreq;
   vector<pair<string, container_t>> _weights;
 
   void _calcWfreq(void);
@@ -32,11 +32,15 @@ private:
   /* Methods */
   void
   _weightFreqMethod(pair<string, container_t> &sentence);
+  void _tokenize(void);
 
 public:
-  explicit Summarizer(const string &file);
+  explicit Summarizer(const string &file,
+                      const string &splitDelim,
+                      const string &stopWordsFd,
+                      unsigned int summarySize);
   void calcSentWeights(const Summarizer::Method &method);
-  string getSummary(unsigned int picksz);
+  string getSummary(void);
   void readSentences(void);
   ~Summarizer();
 };

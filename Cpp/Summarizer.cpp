@@ -5,14 +5,20 @@
 #include <cstring>
 #include <sstream>
 
-Summarizer::Summarizer(const string &file)
-    : _fd(fopen("StopWords", "r"))
+Summarizer::Summarizer(const string &file,
+                       const string &splitDelim,
+                       const string &stopWordsFd,
+                       unsigned int summarySize)
+    : _fd(fopen(stopWordsFd.c_str(), "r"))
     , _file(file)
-    , _tWeight(0)
-    , _maxWeight(INT_MIN) {
+    , _summarySize(summarySize)
+    , _maxFreq(INT_MIN) {
 
   if (!_fd)
-    throw invalid_argument("Missing file: \"StopWords\"");
+    throw invalid_argument(
+        "Fatal: Could not open StopWords file.");
+
+  _splitDelim = splitDelim;
 
   char arr[1024];
   bzero((void *)arr, sizeof(arr));
@@ -32,14 +38,15 @@ Summarizer::_calcWfreq(void) {
     stringstream ss{line};
     string word;
     while (ss >> word) {
-      transform(word.begin(), word.end(), word.begin(),
-                ::tolower);
+      if (_splitDelim == ".")
+        transform(word.begin(), word.end(), word.begin(),
+                  ::tolower);
       if (!Summarizer::_isStopWord(word) &&
-          !Summarizer::_isInteger(word))
+          !Summarizer::_isInteger(word) &&
+          !(word.size() == 1 && !isalpha(word[0])))
         _wfreq[word]++;
-      int val = _wfreq[word];
-      _tWeight += val;
-      _maxWeight = max(_maxWeight, val);
+      unsigned int val = _wfreq[word];
+      _maxFreq = max(_maxFreq, val);
     }
   }
 }
@@ -59,6 +66,32 @@ Summarizer::_isStopWord(const string &word) {
 }
 
 void
+Summarizer::_tokenize(void) {
+  const auto ltrim = [](string &s) {
+    while (isspace(s.front())) {
+      s.erase(s.begin());
+    }
+  };
+
+  unsigned int nseq = 0;
+  string lines = _fdData;
+
+  size_t pos = 0;
+  while ((pos = lines.find(_splitDelim)) != string::npos) {
+    auto line = lines.substr(0, pos);
+    ltrim(line);
+
+    nseq++;
+    container_t c;
+    c.weight = (double)0;
+    c.nseq = nseq;
+
+    _weights.push_back({line, c});
+    lines.erase(0, pos + 1);
+  }
+}
+
+void
 Summarizer::_weightFreqMethod(
     pair<string, container_t> &sentence) {
   double weight = 0;
@@ -67,11 +100,12 @@ Summarizer::_weightFreqMethod(
   string word;
 
   while (ss >> word) {
-    transform(word.begin(), word.end(), word.begin(),
-              ::tolower);
-    assert(_maxWeight > 0);
+    if (_splitDelim == ".")
+      transform(word.begin(), word.end(), word.begin(),
+                ::tolower);
+    assert(_maxFreq > 0);
     assert(_wfreq.find(word) != _wfreq.end());
-    weight += (double)_wfreq[word] / _maxWeight;
+    weight += (double)_wfreq[word] / _maxFreq;
   }
 
   assert(weight > (double)0);
@@ -88,7 +122,7 @@ Summarizer::calcSentWeights(
       _weightFreqMethod(p);
     else
       throw invalid_argument(
-          "Error: Invalid method specified.");
+          "Fatal: Invalid method specified.");
   }
 
   sort(_weights.begin(), _weights.end(),
@@ -98,14 +132,16 @@ Summarizer::calcSentWeights(
 }
 
 string
-Summarizer::getSummary(unsigned int picksz) {
+Summarizer::getSummary(void) {
   string summary{};
-  if (picksz > _weights.size())
+  if (_summarySize > _weights.size())
     throw invalid_argument(
-        "Fatal: picksz larger than _weights.");
+        "Fatal: _summarySize > _weights.");
+
+  auto summarySize = _summarySize;
 
   auto f_itr = _weights.begin();
-  auto l_itr = _weights.begin() + picksz;
+  auto l_itr = _weights.begin() + summarySize;
   vector<pair<string, container_t>> weights(f_itr, l_itr);
 
   sort(weights.begin(), weights.end(),
@@ -114,11 +150,11 @@ Summarizer::getSummary(unsigned int picksz) {
        });
 
   for (const auto &p : weights) {
-    if (!picksz)
+    if (!summarySize)
       return summary;
 
     summary += p.first + ". ";
-    picksz--;
+    summarySize--;
   }
 
   summary.erase(--summary.end());
@@ -130,25 +166,18 @@ Summarizer::readSentences(void) {
   FILE *fd = fopen(_file.c_str(), "r");
   if (!fd)
     throw invalid_argument(
-        "Error reading file: fopen() fail.");
+        "Fatal: Could not read input (text) file.");
 
   char arr[1024];
-  unsigned int nseq = 0;
   bzero((void *)arr, sizeof(arr));
 
   while (fgets(arr, sizeof(arr), fd)) {
-    char *ptr = strtok(arr, ".");
-    while (ptr) {
-      nseq++;
-      container_t c;
-      c.nseq = nseq;
-      c.weight = 0.0;
-      _weights.push_back({ptr, c});
-      ptr = strtok(NULL, ".");
-    }
+    auto line = string(arr);
+    replace(line.begin(), line.end(), '\n', ' ');
+    _fdData += line;
   }
 
-  fclose(fd);
+  _tokenize();
 }
 
 Summarizer::~Summarizer(void) {
